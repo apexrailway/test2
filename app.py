@@ -1281,10 +1281,12 @@ class WebTelegramForwarder:
                 StringSession(),
                 int(auth['api_id']),
                 auth['api_hash'],
-                timeout=30,
+                timeout=15,
                 retry_delay=1,
                 auto_reconnect=True,
-                connection_retries=3
+                connection_retries=2,
+                request_retries=2,
+                use_ipv6=False
             )
             auth['client'] = client
 
