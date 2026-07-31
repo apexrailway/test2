@@ -961,6 +961,10 @@
         .qr-code-container canvas,
         .qr-code-container img {
             display: block !important;
+            margin: 0 auto;
+            width: 256px !important;
+            height: 256px !important;
+            object-fit: contain;
         }
 
         .qr-countdown {
@@ -2427,6 +2431,13 @@
                 closeQrLoginModal();
                 loadAccounts();
             }, 2000);
+        });
+
+        socket.on('qr_2fa_error', (data) => {
+            showNotification(data.error, 'error');
+            // Re-enable the input if needed, but the UI can just stay on the 2FA page
+            const input = document.getElementById('qr2faPassword');
+            if (input) input.value = ''; // clear wrong password
         });
 
         socket.on('qr_login_error', (data) => {
