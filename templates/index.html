@@ -438,7 +438,12 @@
 
         .status-waiting {
             background: linear-gradient(135deg, #fdeb71 0%, #f8d800 100%);
-            color: #78350f;
+            color: #854d0e;
+        }
+
+        .status-expired {
+            background: linear-gradient(135deg, #fceabb 0%, #f8b500 100%);
+            color: #c2410c;
         }
 
         .log-container {
@@ -1072,6 +1077,17 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
         }
+        .btn-reconnect {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+            margin-right: 5px;
+        }
+        .btn-reconnect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
+            color: white;
+        }
         .btn-manage {
             background: linear-gradient(135deg, #64748b, #475569);
             color: white;
@@ -1431,22 +1447,40 @@
             </div>
 
             <!-- Step 2: QR Display -->
-            <div id="qrDisplaySection" class="qr-display-area">
-                <div class="qr-code-container pulse" id="qrCodeContainer"></div>
-                <p style="font-weight: 700; color: #1e293b; font-size: 16px; margin-bottom: 5px;">
-                    📱 Scan with Telegram
-                </p>
-                <p style="color: #64748b; font-size: 13px; margin-bottom: 10px;">
-                    Open Telegram → Settings → Devices → Link Desktop Device
-                </p>
-                <div class="qr-countdown" id="qrCountdown">
-                    Expires in: <span class="timer" id="qrTimer">--</span>s
+            <div id="qrDisplaySection" class="qr-display-area" style="text-align: center;">
+                <div class="modal-header" style="margin-bottom: 15px;">
+                    <h2 style="font-size: 1.5rem;">📷 Scan QR Code</h2>
+                    <p style="color: #64748b; font-size: 14px;">Open Telegram on your phone and scan below</p>
                 </div>
-                <div class="qr-status scanning" id="qrStatus">
-                    ⏳ Waiting for scan...
+                
+                <div class="qr-code-frame" style="padding: 15px; border: 3px solid #3b82f6; border-radius: 20px; display: inline-block; margin-bottom: 15px; background: white; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);">
+                    <div class="qr-code-container pulse" id="qrCodeContainer" style="box-shadow: none; margin-bottom: 0;"></div>
                 </div>
-                <button class="btn btn-qr-cancel" onclick="cancelQrLogin()">
-                    ✕ Cancel
+
+                <div class="qr-refresh-status" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 25px; font-size: 14px; color: #64748b;">
+                    <span>Refreshes in</span>
+                    <div style="width: 120px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; position: relative;">
+                        <div id="qrProgressBarFill" style="height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); width: 100%; transition: width 1s linear;"></div>
+                    </div>
+                    <span style="font-weight: 700; color: #3b82f6; width: 25px; text-align: left;"><span id="qrTimer">30</span>s</span>
+                </div>
+                
+                <div class="qr-status" id="qrStatus"></div>
+
+                <div class="qr-instructions" style="background: linear-gradient(135deg, #f0f4ff, #f3e8ff); border-radius: 12px; padding: 20px; text-align: left; margin-bottom: 25px;">
+                    <h4 style="color: #3b82f6; margin-bottom: 15px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                        <span>📷</span> How to scan:
+                    </h4>
+                    <ol style="margin: 0; padding-left: 20px; color: #334155; font-size: 14px; line-height: 1.8;">
+                        <li>Open <strong>Telegram</strong> on your phone</li>
+                        <li>Go to <strong>Settings → Devices</strong></li>
+                        <li>Tap <strong>"Scan QR Code"</strong></li>
+                        <li>Point camera at the QR code above</li>
+                    </ol>
+                </div>
+
+                <button class="btn" style="background: #f59e0b; color: white; padding: 10px 30px; font-weight: 600; border-radius: 8px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);" onclick="cancelQrLogin()">
+                    Cancel
                 </button>
             </div>
 
@@ -2181,8 +2215,11 @@
             const tbody = document.getElementById('accountsTableBody');
             tbody.innerHTML = '';
             accounts.forEach(account => {
-                const statusClass = account.status === 'Connected' ? 'status-connected' : 
-                                  account.status.includes('Error') ? 'status-error' : 'status-waiting';
+                let statusClass = 'status-waiting';
+                if (account.status === 'Connected') statusClass = 'status-connected';
+                else if (account.status.includes('Error')) statusClass = 'status-error';
+                else if (account.status === 'Auth Expired') statusClass = 'status-expired';
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td style="max-width: 120px; overflow-y: auto; max-height: 100px;">
@@ -2191,8 +2228,9 @@
                     <td>${account.account_name !== account.phone ? `<strong>${account.account_name}</strong><br><small>${account.phone}</small>` : account.phone}</td>
                     <td>${account.source_channel}</td>
                     <td>${account.target_channels.slice(0, 2).join(', ')}${account.target_channels.length > 2 ? `... (+${account.target_channels.length - 2})` : ''}</td>
-                    <td><span class="status-badge ${statusClass}">${account.status}</span></td>
+                    <td><span class="status-badge ${statusClass}">${account.status.toUpperCase()}</span></td>
                     <td style="white-space: nowrap;">
+                        ${account.status === 'Auth Expired' ? `<button class="btn btn-reconnect" onclick="startReconnectQr('${account.phone}')">📷 Reconnect QR</button>` : ''}
                         <button class="btn btn-manage" onclick="showManageModal('${account.phone}')">⚙️ Manage</button>
                         <button class="btn btn-danger" onclick="removeAccount('${account.phone}')">Remove</button>
                     </td>
@@ -2548,6 +2586,36 @@
                 container.appendChild(tag);
             });
         }
+        async function startReconnectQr(phone) {
+            try {
+                // Show modal and specific sections
+                document.getElementById('qrLoginModal').classList.add('show');
+                document.getElementById('qrFormSection').style.display = 'none';
+                document.getElementById('qr2faSection').style.display = 'none';
+                
+                const displaySection = document.getElementById('qrDisplaySection');
+                displaySection.classList.add('active');
+                displaySection.style.display = 'block';
+
+                const container = document.getElementById('qrCodeContainer');
+                container.innerHTML = '<div class="loader"></div><p style="margin-top:10px; color:#64748b;">Requesting QR...</p>';
+
+                const response = await fetch(`/api/accounts/${phone}/reconnect`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                } else {
+                    showNotification(result.error, 'error');
+                    closeQrLoginModal();
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+                closeQrLoginModal();
+            }
+        }
 
         async function startQrLogin() {
             const apiId = document.getElementById('qrApiId').value.trim();
@@ -2637,20 +2705,37 @@
             clearInterval(qrCountdownInterval);
             let remaining = seconds;
             const timerEl = document.getElementById('qrTimer');
+            const progressFill = document.getElementById('qrProgressBarFill');
+            const maxSeconds = seconds;
 
             timerEl.textContent = remaining;
+            if(progressFill) {
+                progressFill.style.width = '100%';
+            }
+
             qrCountdownInterval = setInterval(() => {
                 remaining--;
                 if (remaining <= 0) {
                     timerEl.textContent = '0';
+                    if(progressFill) progressFill.style.width = '0%';
                     clearInterval(qrCountdownInterval);
                     // Server will auto-refresh or emit expired event
                 } else {
                     timerEl.textContent = remaining;
+                    if(progressFill) {
+                        const percent = (remaining / maxSeconds) * 100;
+                        progressFill.style.width = `${percent}%`;
+                        
+                        if (percent <= 30) {
+                            progressFill.style.background = 'linear-gradient(90deg, #ef4444, #f59e0b)';
+                        } else {
+                            progressFill.style.background = 'linear-gradient(90deg, #10b981, #3b82f6)';
+                        }
+                    }
                     if (remaining <= 10) {
                         timerEl.style.color = '#ef4444';
                     } else {
-                        timerEl.style.color = '#1e293b';
+                        timerEl.style.color = '#3b82f6';
                     }
                 }
             }, 1000);
