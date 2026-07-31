@@ -2524,6 +2524,8 @@
             document.getElementById('qrLoginModal').classList.add('show');
             // Reset state
             document.getElementById('qrFormSection').style.display = 'block';
+            document.getElementById('qrDisplaySection').style.display = '';
+            document.getElementById('qr2faSection').style.display = '';
             document.getElementById('qrDisplaySection').classList.remove('active');
             document.getElementById('qr2faSection').classList.remove('active');
             const btn = document.getElementById('qrGenerateBtn');
@@ -2543,6 +2545,8 @@
                 qrTargetChannels = [];
                 updateQrTargetChannelsDisplay();
                 document.getElementById('qrFormSection').style.display = 'block';
+                document.getElementById('qrDisplaySection').style.display = '';
+                document.getElementById('qr2faSection').style.display = '';
                 document.getElementById('qrDisplaySection').classList.remove('active');
                 document.getElementById('qr2faSection').classList.remove('active');
                 const btn = document.getElementById('qrGenerateBtn');
@@ -2590,12 +2594,16 @@
             try {
                 // Show modal and specific sections
                 document.getElementById('qrLoginModal').classList.add('show');
+                
+                // Clear inline styles that might interfere with CSS classes
                 document.getElementById('qrFormSection').style.display = 'none';
-                document.getElementById('qr2faSection').style.display = 'none';
+                document.getElementById('qr2faSection').style.display = '';
+                document.getElementById('qrDisplaySection').style.display = '';
+                
+                document.getElementById('qr2faSection').classList.remove('active');
                 
                 const displaySection = document.getElementById('qrDisplaySection');
                 displaySection.classList.add('active');
-                displaySection.style.display = 'block';
 
                 const container = document.getElementById('qrCodeContainer');
                 container.innerHTML = '<div class="loader"></div><p style="margin-top:10px; color:#64748b;">Requesting QR...</p>';
@@ -2650,8 +2658,16 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    // Hide form, QR will appear via SocketIO event
+                    // Hide form, show display section with loader immediately
                     document.getElementById('qrFormSection').style.display = 'none';
+                    
+                    const displaySection = document.getElementById('qrDisplaySection');
+                    displaySection.style.display = '';
+                    displaySection.classList.add('active');
+                    
+                    const container = document.getElementById('qrCodeContainer');
+                    container.innerHTML = '<div class="loader"></div><p style="margin-top:10px; color:#64748b;">Requesting QR...</p>';
+
                     showNotification(result.message, 'success');
                 } else {
                     btn.disabled = false;
