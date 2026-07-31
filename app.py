@@ -1341,8 +1341,9 @@ class WebTelegramForwarder:
 
                 try:
                     # Wait for the user to scan (with timeout matching QR expiry)
-                    wait_timeout = min(expires_in + 5, 40)
-                    user = await asyncio.wait_for(qr_login.wait(timeout=wait_timeout), timeout=wait_timeout + 5)
+                    # Refresh 2 seconds before the frontend timer hits 0 to ensure smooth UX
+                    wait_timeout = max(5, expires_in - 2)
+                    user = await asyncio.wait_for(qr_login.wait(timeout=wait_timeout), timeout=wait_timeout + 2)
 
                     # SUCCESS — user scanned the QR code
                     self.log_message(f"✅ QR code scanned! Logged in as: {user.first_name}")
