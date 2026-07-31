@@ -1545,6 +1545,15 @@ class WebTelegramForwarder:
         except Exception as e:
             error_msg = str(e)
             self.log_message(f"❌ QR 2FA error: {error_msg}")
+            
+            # If it's a password error, don't kill the client
+            if "password" in error_msg.lower() or "invalid" in error_msg.lower():
+                try:
+                    socketio.emit('qr_2fa_error', {'error': f'Incorrect password: {error_msg}'})
+                except Exception:
+                    pass
+                return
+                
             try:
                 socketio.emit('qr_login_error', {'error': f'2FA failed: {error_msg}'})
             except Exception:
