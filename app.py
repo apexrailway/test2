@@ -806,40 +806,20 @@ class WebTelegramForwarder:
             if not await client.is_user_authorized():
                 if session_string:
                     self.log_message(f"⚠️ Saved session EXPIRED or INVALIDATED by Telegram", phone)
-                    self.log_message(f"📋 Possible reasons: IP change, inactivity, security policy, or manual logout", phone)
-                    self.log_message(f"🔄 Requesting new authentication code to generate fresh session", phone)
-
-                    # Check if this might be an API ID mismatch
-                    try:
-                        # Log API credentials being used (first/last chars only for security)
-                        api_id_str = str(account['api_id'])
-                        api_hash_str = str(account['api_hash'])
-                        self.log_message(f"🔑 Using API ID: {api_id_str[:3]}...{api_id_str[-3:]} (Hash: {api_hash_str[:4]}...{api_hash_str[-4:]})", phone)
-                    except:
-                        pass
+                    self.log_message(f"📋 Please use 'Reconnect QR' to generate a new session", phone)
                 else:
-                    self.log_message(f"New account - sending authentication code", phone)
+                    self.log_message(f"⚠️ No session found. Please use 'Reconnect QR'", phone)
 
-                account['status'] = 'Waiting for code...'
-
-                await client.send_code_request(phone)
-
-                self.pending_auth[phone] = {
-                    'client': client,
-                    'account': account,
-                    'step': 'code'
-                }
-
+                account['status'] = 'Auth Expired'
+                self.db.update_account(phone, {'status': 'Auth Expired'})
+                
                 try:
-                    socketio.emit('auth_required', {
-                        'phone': phone,
-                        'step': 'code'
-                    })
                     socketio.emit('accounts_updated', self.get_accounts_data())
                 except:
                     pass
 
-                return 'auth_required'
+                await client.disconnect()
+                return 'auth_expired'
 
             me = await client.get_me()
             self.clients[phone] = client
@@ -1561,6 +1541,30 @@ class WebTelegramForwarder:
                 pass
             await self._cleanup_qr_client(client)
             self.pending_qr_auth = {}
+
+    def reconnect_qr_account(self, phone):
+        """Initiate QR login for an existing account with broken session."""
+        account = self.db.get_account_by_phone(phone)
+        if not account:
+            return {"success": False, "error": "Account not found"}
+
+        # Start a new QR login flow using existing account data
+        self.pending_qr_auth = {
+            'step': 'qr',
+            'api_id': account.get('api_id'),
+            'api_hash': account.get('api_hash'),
+            'source_channel': account.get('source_channel'),
+            'target_channels': account.get('target_channels'),
+            'account_name': account.get('account_name'),
+            'client': None,
+            'qr_login': None,
+            'cancelled': False,
+            'reconnect_phone': phone # Optional flag to denote reconnect
+        }
+
+        self.log_message(f"📷 QR Reconnect started for {phone}")
+        asyncio.run_coroutine_threadsafe(self._qr_login_worker(), self.loop)
+        return {"success": True, "message": "QR login started for reconnect."}
 
     def cancel_qr_login(self):
         """Cancel an in-progress QR login."""
@@ -2379,6 +2383,12 @@ def update_account(phone):
         new_source=data.get('source_channel'),
         new_targets=data.get('target_channels')
     )
+    return jsonify(result)
+
+@app.route('/api/accounts/<phone>/reconnect', methods=['POST'])
+@login_required
+def reconnect_account(phone):
+    result = forwarder.reconnect_qr_account(phone)
     return jsonify(result)
 
 @app.route('/api/channels/remove', methods=['POST'])
