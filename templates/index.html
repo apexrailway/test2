@@ -2602,9 +2602,11 @@
             const container = document.getElementById('qrCodeContainer');
             const statusEl = document.getElementById('qrStatus');
 
-            // Clear previous QR code
+            // Clear previous QR code completely
+            if (qrCodeInstance) {
+                try { qrCodeInstance.clear(); } catch(e){}
+            }
             container.innerHTML = '';
-            container.classList.add('pulse');
             qrCodeInstance = null;
 
             // Generate QR code
@@ -2648,7 +2650,7 @@
                     if (remaining <= 10) {
                         timerEl.style.color = '#ef4444';
                     } else {
-                        timerEl.style.color = '#ef4444';
+                        timerEl.style.color = '#1e293b';
                     }
                 }
             }, 1000);
